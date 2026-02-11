@@ -1,0 +1,207 @@
+#include <LCD16x2.h> //allows us to use the little LCD at the top
+#include <Wire.h>
+//#include <NineAxesMotion.h>
+#include <Arduino_NineAxesMotion.h>
+
+LCD16x2 lcd;
+
+NineAxesMotion mySensor;
+
+const int M1_direction = 4;
+const int M1_PWM       = 5;
+const int M2_direction = 7;
+const int M2_PWM       = 6;
+
+
+void setup() //This code is executed once
+{
+  int buttons;
+float positions[8][2];
+
+  
+  //Peripheral Initialization
+  Serial.begin(9600);           //Initialize the Serial Port to view information on the Serial Monitor
+  I2C.begin();                    //Initialize I2C communication to the let the library communicate with the sensor.
+  Wire.begin();
+
+  //Sensor Initialization
+  mySensor.initSensor();          //The I2C Address can be changed here inside this function in the library
+  mySensor.setOperationMode(OPERATION_MODE_NDOF);   //NDOF = 9 Degrees of Freedom Sensor (Other operatin modes are available)
+  mySensor.setUpdateMode(AUTO);  //The default is AUTO. Changing to MANUAL requires calling the relevant update functions prior to calling the read functions
+  //Setting to MANUAL requires fewer reads to the sensor
+    
+    pinMode(M1_direction, OUTPUT);
+    pinMode(M1_PWM, OUTPUT);
+    pinMode(M2_direction, OUTPUT);
+    pinMode(M2_PWM, OUTPUT);
+
+  pinMode(2,OUTPUT);
+
+ digitalWrite(2,LOW) ;
+
+  
+  lcd.lcdClear();
+   
+  lcd.lcdGoToXY(1,1);
+  lcd.lcdWrite("Press white key");
+
+  buttons = lcd.readButtons(); //Sample the state of the large white buttons
+
+while(buttons == 15) // A value of 15 will only be seen if no buttons are pressed
+{
+  buttons = lcd.readButtons(); //Sample the state of the large white buttons
+}
+
+
+lcd.lcdClear();
+
+lcd.lcdGoToXY(1,1); //Write in the static text labels for later
+lcd.lcdWrite("H");
+   
+lcd.lcdGoToXY(6,1);
+lcd.lcdWrite("P");
+    
+lcd.lcdGoToXY(12,1);
+lcd.lcdWrite("R");
+
+lcd.lcdGoToXY(1,2); //Write in the static text labels for later
+lcd.lcdWrite("X");
+   
+lcd.lcdGoToXY(6,2);
+lcd.lcdWrite("Y");
+    
+lcd.lcdGoToXY(12,2);
+lcd.lcdWrite("Z");
+
+delay(50);
+
+ digitalWrite(2,LOW) ;//Set M2 speed
+
+
+}
+
+
+void loop()
+{
+float heading, roll, pitch;
+float Ax, Ay, Az;
+
+
+  
+
+
+heading = mySensor.readEulerHeading(); //read all the data we want from the sensor into our variables
+
+Ax = mySensor.readLinearAccelX();
+Ay = mySensor.readLinearAccelY();
+Az = mySensor.readLinearAccelZ();
+
+
+
+turn45Degrees();
+Serial.println(heading);
+
+
+
+delay(25); //little delay so we don't confuse the I2C bus FIXME: is there a more elegant way to do this?
+}
+
+void driveForward(int s) {
+    digitalWrite(M1_direction, HIGH);
+    digitalWrite(M2_direction, LOW);
+    analogWrite(M1_PWM, s);
+    analogWrite(M2_PWM, s);
+}
+
+void driveBackward(int s) {
+    digitalWrite(M1_direction, LOW);
+    digitalWrite(M2_direction, HIGH);
+    analogWrite(M1_PWM, s);
+    analogWrite(M2_PWM, s);
+}
+
+void turnRight(int s) {
+    // motors opposite directions to spin on the spot
+    digitalWrite(M1_direction, HIGH);
+    digitalWrite(M2_direction, HIGH);
+    analogWrite(M1_PWM, s);
+    analogWrite(M2_PWM, s);
+}
+
+void turnLeft(int s) {
+    digitalWrite(M1_direction, LOW);
+    digitalWrite(M2_direction, LOW);
+    analogWrite(M1_PWM, s);
+    analogWrite(M2_PWM, s);
+}
+
+void stopMotors() {
+    analogWrite(M1_PWM, 0);
+    analogWrite(M2_PWM, 0);
+}
+
+
+void turn45Degrees(){
+  float targetAngle = 45.00;
+  int turnSpeed = 150;
+  int slowSpeed = 15;
+
+    float currentHeading = mySensor.readEulerHeading();
+    if (currentHeading>315){
+    currentHeading=0;
+    
+      float targetHeading = currentHeading + targetAngle;
+
+      turnRight(turnSpeed);
+
+
+
+
+  while(true){
+
+
+    if(currentHeading > targetHeading-10){
+
+      Serial.print("STOP");
+       stopMotors();
+
+       break;
+
+    }else{Serial.println(currentHeading);}
+
+
+  }
+  delay(100);
+
+
+
+
+    }
+
+
+
+
+else{
+  float targetHeading = currentHeading + targetAngle;
+
+      turnRight(turnSpeed);
+
+
+
+
+  while(true){
+
+
+    if(currentHeading > targetHeading-10){
+      Serial.print("STOP");
+       stopMotors();
+
+    }else{Serial.println(currentHeading);    }
+  }
+  delay(100);
+
+}
+}
+
+
+
